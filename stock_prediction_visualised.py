@@ -1,20 +1,17 @@
-# pip install streamlit prophet plotly
-from datetime import datetime
-
-import streamlit as st
-import pandas as pd
-
-from prophet import Prophet
+# pip install streamlit, prophet, plotly, pandas — загрузка модулей
+import streamlit as st # Библиотека streamlit позволяет показать даннэ визуально в браузере, что позволяет сохранить время инвесторам
+import pandas as pd # Pandas — главная библиотека в Python для работы с данными. (Позволяет взаимодействовать с файлами формата csv (читать данные в файлах))
+from prophet import Prophet # Prophet — библиотека, позволяющая обучить итоговою модель, используя данные
 from prophet.plot import plot_plotly
-from plotly import graph_objs as go
+from plotly import graph_objs as go # Позволяет отображать графики в приложении
 
-st.title('Stock Forecast')
+st.title('Stock Forecast') # Название приложения
 
-stocks = ('VKCO', 'SBER', 'YNDX', 'CHMF', 'MTSS', 'SMLT', 'AGRO', 'SIBN')
-selected_stock = st.selectbox('Select dataset for prediction', stocks)
+stocks = ('VKCO', 'SBER', 'YNDX', 'CHMF', 'MTSS', 'SMLT', 'AGRO', 'SIBN') #tuple со всеми акциями в train.csv
+selected_stock = st.selectbox('Select dataset for prediction', stocks) #checkbox на сайте, который позволяет выбрать нужную акцию
 
 n_months = st.slider('Months of prediction:', 1, 4)
-period = n_months * 31 * 24
+period = n_months * 31 * 24 # Сколько раз будет предпологаться цена акций - н месяцов * 31 день * 24 часа
 
 
 @st.cache
@@ -24,19 +21,18 @@ def load_data(ticker):
     return data
 
 
-train_data = pd.read_csv("train.csv", delimiter=";")
-train_data['datetime'] = pd.to_datetime(train_data['DATE']+' '+train_data['TIME'])
+train_data = pd.read_csv("train.csv", delimiter=";") # Чтение данных с train.csv
+train_data['datetime'] = pd.to_datetime(train_data['DATE']+' '+train_data['TIME']) # Создание параметра datetime
 
-data_load_state = st.text('Loading data...')
-data = load_data(selected_stock)
-data_load_state.text('Loading data... done!')
-
-
-st.subheader('Raw data')
-st.write(data.tail())
+data_load_state = st.text('Loading data...') # Визуальные эффекты на сайте
+data = load_data(selected_stock) # Чтение данных с определенным значением TICKER
+data_load_state.text('Loading data... done!') # Визуальные эффекты на сайте
 
 
-# Plot raw data
+st.subheader('Raw data') # Визуальные эффекты на сайте
+st.write(data.tail()) # Показывает данные в таблице на сайте
+
+
 def plot_raw_data():
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=data['datetime'], y=data['OPEN'], name="stock_open"))
@@ -45,25 +41,24 @@ def plot_raw_data():
     st.plotly_chart(fig)
 
 
-plot_raw_data()
+plot_raw_data() # Показывает график цены акции
 
-# Predict forecast with Prophet.
-df_train = data[['datetime', 'CLOSE']]
-df_train = df_train.rename(columns={"datetime": "ds", "CLOSE": "y"})
+df_train = data[['datetime', 'CLOSE']] # Используются только перемены datetime и CLOSE
+df_train = df_train.rename(columns={"datetime": "ds", "CLOSE": "y"}) # Обязательная конструкция для модуля Prophet
 
-m = Prophet()
-m.fit(df_train)
-future = m.make_future_dataframe(periods=period, freq="h")
-forecast = m.predict(future)
+m = Prophet() # ИИ Модель
+m.fit(df_train) # Данные подаются в модель
+future = m.make_future_dataframe(periods=period, freq="h") # Почасовая разметка на будующие н месяцов
+forecast = m.predict(future) # Предсказание будущих значений CLOSE (dataframe в котором приситсвуют все данные df_train + предсказанные данные)
 
-# Show and plot forecast
+# Таблица предсказанных данных
 st.subheader('Forecast data')
 st.write(forecast.tail())
-
+# График предсказанной цены
 st.write(f'Forecast plot for {n_months} months')
 fig1 = plot_plotly(m, forecast)
 st.plotly_chart(fig1)
-
+# Графики - тренд по дням недели, тренд по времени дня
 st.write("Forecast components")
 fig2 = m.plot_components(forecast)
 st.write(fig2)
